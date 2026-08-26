@@ -1,0 +1,81 @@
+set(mpi_sources)
+set(mpi_headers)
+set(mpi_libraries)
+
+if(${ENABLE_MPI})
+  set(mpi_sources
+      model/point-to-point-remote-channel.cc
+  )
+  set(mpi_headers
+      model/point-to-point-remote-channel.h
+  )
+  set(mpi_libraries
+      ${libmpi}
+      ${MPI_CXX_LIBRARIES}
+  )
+endif()
+
+build_lib(
+  LIBNAME point-to-point
+  SOURCE_FILES
+    ${mpi_sources}
+    helper/point-to-point-helper.cc
+    model/point-to-point-channel.cc
+    model/point-to-point-net-device.cc
+    model/bth-header.cc
+    model/ppp-header.cc
+    model/mpls-header.cc
+    model/vxlan-header.cc
+    model/compress-ip-header.cc
+    model/port-header.cc
+    model/command-header.cc
+    model/hctcp-header.cc
+    model/pfc-header.cc
+    model/rohc-header.cc
+    model/rohc-hctcp-header.cc
+    model/rohc-ip-header.cc
+    model/point-to-point-queue.cc
+    model/switch-node.cc
+    model/control-node.cc
+    model/ipv4-tag.cc
+    model/ipv6-tag.cc
+    model/hctcp-tag.cc
+    model/packet-tag.cc
+    model/rohc-compressor.cc
+    model/rohc-decompressor.cc
+    model/ideal-compressor.cc
+    model/ideal-decompressor.cc
+    model/rdma-queue-pair.cc
+  HEADER_FILES
+    ${mpi_headers}
+    helper/point-to-point-helper.h
+    model/point-to-point-channel.h
+    model/point-to-point-net-device.h
+    model/bth-header.h
+    model/ppp-header.h
+    model/mpls-header.h
+    model/vxlan-header.h
+    model/compress-ip-header.h
+    model/port-header.h
+    model/command-header.h
+    model/hctcp-header.h
+    model/pfc-header.h
+    model/rohc-header.h
+    model/rohc-hctcp-header.h
+    model/rohc-ip-header.h
+    model/point-to-point-queue.h
+    model/switch-node.h
+    model/control-node.h
+    model/ipv4-tag.h
+    model/ipv6-tag.h
+    model/hctcp-tag.h
+    model/packet-tag.h
+    model/rohc-compressor.h
+    model/rohc-decompressor.h
+    model/ideal-compressor.h
+    model/ideal-decompressor.h
+    model/rdma-queue-pair.h
+  LIBRARIES_TO_LINK ${libnetwork}
+                    ${mpi_libraries}
+  TEST_SOURCES test/point-to-point-test.cc
+)
