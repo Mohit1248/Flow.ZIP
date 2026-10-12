@@ -75,7 +75,7 @@ build_lib(
     model/ideal-compressor.h
     model/ideal-decompressor.h
     model/rdma-queue-pair.h
-  LIBRARIES_TO_LINK ${libnetwork}
+  LIBRARIES_TO_LINK ${libnetwork} ${libinternet}
                     ${mpi_libraries}
   TEST_SOURCES test/point-to-point-test.cc
 )
