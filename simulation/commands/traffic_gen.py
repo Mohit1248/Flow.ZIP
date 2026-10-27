@@ -36,6 +36,9 @@ if __name__ == "__main__":
 	parser.add_option("-l", "--load", dest = "load", help = "the percentage of the traffic load to the network capacity, by default 0.5", default = "0.5")
 	parser.add_option("-b", "--bandwidth", dest = "bandwidth", help = "the bandwidth of host link (G/M/K), by default 25G", default = "25G")
 	parser.add_option("-t", "--time", dest = "time", help = "the total run time (s), by default 0.5", default = "0.5")
+	parser.add_option("--incast", dest = "incast", action = "store_true", help = "inject one incast burst (many senders -> one receiver, all at once) on top of the background traffic", default = False)
+	parser.add_option("--incast_senders", dest = "incast_senders", help = "number of simultaneous senders in the incast burst, by default 16", default = "16")
+	parser.add_option("--incast_frac", dest = "incast_frac", help = "fraction of the trace duration at which the incast burst fires (0-1), by default 0.5 (midpoint)", default = "0.5")
 	options,args = parser.parse_args()
 
 	base_t = 2e9
@@ -43,7 +46,7 @@ if __name__ == "__main__":
 	if not options.nhost:
 		print("please use -n to enter number of hosts")
 		sys.exit(0)
-	
+
 	fileName = "traffic_cdf/" + options.cdf_file + ".txt"
 
 	nhost = int(options.nhost)
@@ -59,7 +62,6 @@ if __name__ == "__main__":
 	# read the cdf, save in cdf as [[x_i, cdf_i] ...]
 	cdf = []
 	for line in lines:
-		# print(line.strip().split('  '))
 		x,z = map(float, line.strip().split())
 		cdf.append([x,z])
 
@@ -72,21 +74,25 @@ if __name__ == "__main__":
 	avg = customRand.getAvg()
 	avg_inter_arrival = 1e9/(bandwidth*load/8./avg)/nhost
 
+	suffix = ""
+	if options.incast:
+		suffix = "_incast" + options.incast_senders
+
 	output = "../trace/" + options.cdf_file + "_" + options.nhost + "_" + options.load + "_" + \
-			options.bandwidth + "_" + options.time + ".tr"
+			options.bandwidth + "_" + options.time + suffix + ".tr"
 
 	if not os.path.exists("../trace/"):
 		os.makedirs("../trace/")
-	ofile = open(output, "w")
 
+	flows = []
+
+	# ---- background traffic (same algorithm as the original script) ----
 	t = base_t
-	n_flow = 0
-
 	while True:
 		inter_t = int(poisson(avg_inter_arrival))
 		if inter_t <= 0:
 			inter_t = 1
-		
+
 		t += inter_t
 		if t > base_t + time:
 			break
@@ -99,8 +105,35 @@ if __name__ == "__main__":
 		size = int(customRand.rand())
 		if size <= 0:
 			size = 1
-		n_flow += 1
-		ofile.write("%d %d %d %d\n"%(src, dst, size, t))
+		flows.append(Flow(src, dst, size, t))
 
+	# ---- optional incast burst: many senders -> one receiver, all at the same instant ----
+	if options.incast:
+		incast_senders = int(options.incast_senders)
+		incast_frac = float(options.incast_frac)
+		if incast_senders > nhost - 1:
+			print("incast_senders must be <= nhost - 1")
+			sys.exit(0)
+
+		incast_t = int(base_t + time * incast_frac)
+		receiver = random.randint(0, nhost-1)
+
+		candidates = [h for h in range(nhost) if h != receiver]
+		senders = random.sample(candidates, incast_senders)
+
+		for i, src in enumerate(senders):
+			size = int(customRand.rand())
+			if size <= 0:
+				size = 1
+			# stagger by 1ns each so lines have strictly increasing, distinct timestamps
+			flows.append(Flow(src, receiver, size, incast_t + i))
+
+	# ---- sort all flows (background + incast) by start time before writing ----
+	flows.sort(key=lambda f: f.t)
+
+	ofile = open(output, "w")
+	for f in flows:
+		ofile.write(str(f))
 	ofile.close()
-	print(n_flow)
+
+	print(len(flows))
